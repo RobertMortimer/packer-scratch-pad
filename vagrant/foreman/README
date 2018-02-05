@@ -1,0 +1,25 @@
+# Linux specifics:
+
+In order to get this working under Linux/Fedora, I had to do the following:
+
+# dnf install ruby-devel 
+# dnf install vagrant-sshfs
+# dnf install vagrant-libvirt
+
+# vagrant plugin install vagrant-proxyconf
+
+I also had to make some heavy modifications to the Vagrantfile
+
+The file should now be seperated into specific dependencies for Virtualbox
+and for libvirt.
+
+The 'foremanstrap.sh' file was modified to copy files from the host-mount
+to the appropriate location (rather than modifying the host files directly.) 
+
+I.e. the following entries:
+
+#    sudo  cp -R /modules/* /etc/puppet/modules/
+#    sudo  cp -R /environment/* /etc/puppet/hieradata/environment/
+#    sudo  cp -R /common/* /etc/puppet/hieradata/common/
+
+This is because libvirt uses sshfs to make mounting of host dir's easier.

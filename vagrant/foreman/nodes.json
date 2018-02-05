@@ -1,0 +1,25 @@
+{
+  "nodes": {
+    "p5-foreman.puppet-dev.hpe.com": {
+      "hostname": "p5-foreman.puppet-dev.hpe.com",
+      ":ip": "192.168.44.5",
+      "ports": [],
+      ":memory": 4096,
+      ":bootstrap": "foremanstrap.sh",
+      "fstype": "virtualbox",
+      "boxname": "viniciusxavier/centos7.4"
+    },
+    "p5-client1.puppet-dev.hpe.com": {
+      ":ip": "192.168.44.51",
+      "ports": [],
+      ":memory": 1024,
+      ":bootstrap": "nodestrap.sh"
+    },
+    "p5-client2.puppet-dev.hpe.com": {
+      ":ip": "192.168.44.52",
+      "ports": [],
+      ":memory": 1024,
+      ":bootstrap": "nodestrap.sh"
+    }
+  }
+}

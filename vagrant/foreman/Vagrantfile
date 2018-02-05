@@ -1,0 +1,92 @@
+# -*- mode: ruby -*-
+# vi: set ft=ruby :
+require 'json'
+
+
+# Builds single Foreman server and
+# multiple Puppet Agent Nodes using JSON config file
+
+# read vm and chef configurations from JSON files
+if File.exists?(File.expand_path "./nodes.json")
+  base_config = (JSON.parse(File.read("nodes.json")))['nodes']
+  if File.exists?(File.expand_path "./custom.nodes.json")
+    custom_config = (JSON.parse(File.read("custom.nodes.json")))['nodes']
+    nodes_config = base_config.merge(custom_config)
+  else
+    nodes_config = base_config
+  end
+end
+
+VAGRANTFILE_API_VERSION = "2"
+
+Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
+  nodes_config.each do |node|
+    if nodes_config.has_key?('boxname')
+      boxname = node_values['boxname']
+    else
+      boxname = "CentOS7.4"
+    end
+    #puts("Using boxname #{boxname}")
+    config.vm.box = "#{boxname}"
+    node_name   = node[0] # name of node
+    node_values = node[1] # content of node
+
+    config.vm.define node_name do |config|
+      # configures all forwarding ports in JSON array
+      ports = node_values['ports']
+      ports.each do |port|
+        config.vm.network :forwarded_port,
+          host:  port[':host'],
+          guest: port[':guest'],
+          id:    port[':id']
+      end
+
+      config.vm.hostname = node_name
+      config.vm.network :private_network, ip: node_values[':ip']
+
+      config.vm.provider :virtualbox do |vb|
+        vb.customize ["modifyvm", :id, "--memory", node_values[':memory']]
+        if hostname = node_name
+          #puts("Same #{node_name}")
+          hostname = node_name
+        else
+          #puts("Changing #{node_name}")
+          hostname = node_name
+          vb.customize ["modifyvm", :id, "--name", node_name]
+        end
+        config.vm.provision :shell, :path => node_values[':bootstrap']
+          default_fstype = "rsync"
+          default_options = ["--verbose", "--rsync-path='sudo rsync'", "--archive", "--delete", "-z"]
+          if hostname == "p5-foreman.puppet-dev.hpe.com" then
+            if node_values.has_key?('fstype')
+              fstype = node_values[':fstype']
+              config.vm.synced_folder "~/Dev/puppet-default-data", "/etc/puppetlabs/code/hieradata/common/", type: "#{fstype}", create: true
+              config.vm.synced_folder "~/Dev/puppet-region-data", "/etc/puppetlabs/code/hieradata/environment/", type: "#{fstype}", create: true
+              config.vm.synced_folder "~/Dev/puppet-modules", "/etc/puppetlabs/code/modules/", type: "#{fstype}", create: true
+            else
+              config.vm.synced_folder "~/Dev/puppet-default-data", "/etc/puppetlabs/code/hieradata/common/",
+              type: "#{default_fstype}",  rsync__args: default_options
+              config.vm.synced_folder "~/Dev/puppet-region-data", "/etc/puppetlabs/code/hieradata/environment/",
+              type: "#{default_fstype}",  rsync__args: ["--verbose", "--rsync-path='sudo rsync'", "--archive", "--delete", "-z"]
+              config.vm.synced_folder "~/Dev/puppet-modules", "/etc/puppetlabs/code/modules/",
+              type: "#{default_fstype}",  rsync__args: ["--verbose", "--rsync-path='sudo rsync'", "--archive", "--delete", "-z"]
+            end
+           end
+        end
+       #config.vm.provider :libvirt do |lv, override|
+       #lv.memory = 2048
+
+       #override.vm.synced_folder ".", "/vagrant", type: "sshfs", sshfs_opts_append: "-o nonempty"
+
+       #override.proxy.http  = "http://16.85.88.10:8080"
+       #override.proxy.https = "http://16.85.88.10:8080"
+
+       #if node_name == "foreman.puppet-dev.hpe.com" then
+       #   override.vm.synced_folder "~/Dev/puppet-default-data", "/common", type: "sshfs", sshfs_opts_append: "-o nonempty"
+       #   override.vm.synced_folder "~/Dev/puppet-region-data", "/environment", type: "sshfs", sshfs_opts_append: "-o nonempty"
+       #   override.vm.synced_folder "~/Dev/puppet-modules", "/modules", type: "sshfs", sshfs_opts_append: "-o nonempty"
+       #end
+       #end
+    end
+  end
+end
